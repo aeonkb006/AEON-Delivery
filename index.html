@@ -3,52 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>送貨查詢頁面</title>
+    <title>送貨查詢系統 (強力連線版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f6f9; padding: 20px; display: flex; justify-content: center; }
         .container { background: white; padding: 0; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; overflow: hidden; }
         
-        /* 頂部標題與 Tab 切換 */
         .header { background: #333; color: white; padding: 20px; text-align: center; }
         h2 { margin: 0 0 15px 0; font-size: 22px; }
         
         .tabs { display: flex; background: #e0e0e0; padding: 5px; border-radius: 8px; margin-top: 10px; }
         .tab-btn { flex: 1; border: none; padding: 12px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; transition: 0.3s; background: transparent; color: #555; }
-        
-        /* 方案 A (DC) 的配色 */
         .tab-btn.active-dc { background: #007bff; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        /* 方案 B (CS) 的配色 */
         .tab-btn.active-cs { background: #fd7e14; color: white; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
 
-        /* 新增：方案備註欄 (Notice Board) */
         .notice-section { padding: 15px 20px 0 20px; }
-        .notice-box { padding: 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; display: none; } /* 預設隱藏 */
-        .notice-box strong { display: block; margin-bottom: 5px; font-size: 15px; }
-
-        /* DC 備註樣式 (藍色) */
+        .notice-box { padding: 15px; border-radius: 8px; font-size: 14px; line-height: 1.6; display: none; }
         .notice-dc { background-color: #e7f3ff; color: #0056b3; border: 1px solid #b8daff; }
-        /* CS 備註樣式 (橙色) */
         .notice-cs { background-color: #fff4e6; color: #d9480f; border: 1px solid #ffcc99; }
+        .notice-title { font-weight: bold; font-size: 15px; margin-bottom: 5px; display: block; }
+        .notice-content ul { margin: 0; padding-left: 20px; }
+        .notice-content li { margin-bottom: 4px; }
 
-        /* 搜尋區域 */
         .search-section { padding: 20px; background: #fff; border-bottom: 1px solid #eee; }
-        .input-wrapper { position: relative; }
         input[type="text"] { width: 100%; padding: 15px; font-size: 18px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; outline: none; transition: 0.3s; }
         input[type="text"]:focus { border-color: #007bff; box-shadow: 0 0 8px rgba(0,123,255,0.15); }
         
-        /* 結果區域 */
-        .results-area { padding: 20px; min-height: 200px; background: #f9f9f9; }
-        .empty-msg { text-align: center; color: #888; margin-top: 30px; font-size: 15px; }
+        .results-area { padding: 20px; min-height: 120px; background: #f9f9f9; }
+        .empty-msg { text-align: center; color: #888; margin-top: 20px; font-size: 15px; }
+        .loading-msg { text-align: center; color: #666; margin-top: 20px; font-weight: bold; }
+        .error-msg { text-align: center; color: #721c24; margin-top: 20px; display: none; padding: 15px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; font-size: 14px; line-height: 1.6; }
         
-        /* 卡片樣式 */
         .result-card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; overflow: hidden; border-left: 5px solid #ccc; }
-        
-        /* DC 樣式 */
         .result-card.type-dc { border-left-color: #007bff; }
         .type-dc .card-tag { background: #e7f3ff; color: #0056b3; }
-        
-        /* CS 樣式 */
         .result-card.type-cs { border-left-color: #fd7e14; }
         .type-cs .card-tag { background: #fff4e6; color: #d9480f; }
 
@@ -59,9 +47,23 @@
         .info-row { display: flex; align-items: flex-start; margin-bottom: 8px; font-size: 15px; color: #444; }
         .icon { margin-right: 8px; min-width: 20px; }
         .time-slot { background: #eee; padding: 5px 10px; border-radius: 4px; font-weight: bold; display: inline-block; margin-top: 2px; }
-
         .alert-box { background-color: #fff5f5; border: 1px solid #ffcccc; color: #cc0000; padding: 10px; border-radius: 6px; font-size: 14px; margin-top: 10px; }
         .no-service-card { border-left-color: #dc3545 !important; opacity: 0.8; }
+
+        .calendar-section { padding: 20px; background: #fff; border-top: 1px solid #eee; display: none; }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .cal-header button { background: none; border: 1px solid #ddd; padding: 5px 15px; border-radius: 5px; cursor: pointer; font-size: 18px; color: #555; }
+        .cal-title { font-weight: bold; font-size: 18px; color: #333; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; font-size: 14px; }
+        .cal-day-header { font-weight: bold; color: #666; padding-bottom: 5px; border-bottom: 1px solid #eee; margin-bottom: 5px; font-size: 13px; }
+        .cal-cell { padding: 5px 2px; border-radius: 5px; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; position: relative; }
+        .cal-date { z-index: 2; font-weight: bold; margin-bottom: 2px; }
+        .cal-holiday { font-size: 10px; color: #e74c3c; line-height: 1.1; transform: scale(0.9); white-space: nowrap; }
+        .cal-cell.empty { background: none; }
+        .cal-cell.highlight::before { content: ""; position: absolute; top: 2px; left: 50%; transform: translateX(-50%); width: 26px; height: 26px; background-color: #d4edda; border-radius: 50%; z-index: 1; }
+        .cal-cell.highlight .cal-date { color: #155724; }
+        .cal-cell.is-holiday .cal-date { color: #e74c3c !important; }
+        .cal-cell:nth-child(7n), .cal-cell:nth-child(7n-1) { color: #999; }
     </style>
 </head>
 <body>
@@ -70,404 +72,229 @@
     <div class="header">
         <h2>🚚 送貨查詢頁面</h2>
         <div class="tabs">
-            <button class="tab-btn active-dc" onclick="switchTab('dc')">📦 DC 派送 </button>
-            <button class="tab-btn" onclick="switchTab('cs')">💁🏼‍♀️ CS 派送 </button>
+            <button class="tab-btn active-dc" onclick="switchTab('dc')">📦 DC 派送</button>
+            <button class="tab-btn" onclick="switchTab('cs')">💁🏻‍♀️ CS 派送</button>
         </div>
     </div>
 
     <div class="notice-section">
         <div id="notice-dc" class="notice-box notice-dc" style="display: block;">
-            <strong>📦 DC 上樓收費及須知：</strong>
-            • 小型電器上樓首三層(27級內)免費，如超過，則收取一次性港幣$50。<br>
-            • 大型電器上樓每層(9級為一層)收取港幣$30。<br>
-            • 大型電器包括:雪櫃，冷氣機，洗衣機，乾衣機，酒櫃。
+            <span class="notice-title">📦 DC 上樓收費及須知：</span>
+            <div class="notice-content" id="content-dc">載入中...</div>
         </div>
-
         <div id="notice-cs" class="notice-box notice-cs">
-            <strong>💁🏼‍♀️ CS 上樓收費及須知：</strong>
-            • 上樓首三層免費，三層後每層收取港幣$30。<br>
-            • 村屋C時段，只可於村口停車場交收。<br>
-            • 送貨必須於購買日起十四天內完成。
+            <span class="notice-title">💁🏻‍♀️ CS 上樓收費及須知：</span>
+            <div class="notice-content" id="content-cs">載入中...</div>
         </div>
     </div>
     
     <div class="search-section">
         <div class="input-wrapper">
-            <input type="text" id="searchInput" placeholder="請輸入送貨地區 (例如: 元朗, 將軍澳)..." onkeyup="performSearch()">
+            <input type="text" id="searchInput" placeholder="請輸入送貨地區..." onkeyup="performSearch()">
         </div>
     </div>
 
+    <div id="loading" class="loading-msg">正在強力連線中 (請稍候)...</div>
+    <div id="errorMsg" class="error-msg"></div>
+    
     <div id="results" class="results-area">
         <div class="empty-msg">請輸入地區關鍵字查詢</div>
+    </div>
+
+    <div class="calendar-section" id="calendarArea">
+        <div class="cal-header">
+            <button onclick="changeMonth(-1)">&#10094;</button>
+            <div class="cal-title" id="calTitle">2026年 1月</div>
+            <button onclick="changeMonth(1)">&#10095;</button>
+        </div>
+        <div class="cal-grid" id="calGrid">
+            <div class="cal-day-header">Mon</div>
+            <div class="cal-day-header">Tue</div>
+            <div class="cal-day-header">Wed</div>
+            <div class="cal-day-header">Thu</div>
+            <div class="cal-day-header">Fri</div>
+            <div class="cal-day-header">Sat</div>
+            <div class="cal-day-header" style="color:#e74c3c">Sun</div>
+        </div>
     </div>
 </div>
 
 <script>
     // =========================================================
-    // 數據源 (保留你之前的資料)
+    // ▼ 使用 corsproxy.io (更強大的代理) ▼
     // =========================================================
     
-    // 方案 A: DC 資料
-    const rawDataDC = `地區關鍵字,送貨安排,⚠️特別備注
-小西灣,星期一至日,
-西灣河,星期一至日,
-柴灣,星期一至日,
-太古,星期一至日,
-筲箕灣,星期一至日,
-杏花邨,星期一至日,
-鰂魚涌,"星期三,五,日",英皇道986號不設送貨
-銅鑼灣,"星期三,五,日",
-西營盤,"星期三,五,日",
-鴨脷洲,"星期三,五,日",
-半山,"星期三,五,日",
-北角,"星期三,五,日",
-灣仔,"星期三,五,日",
-西環,"星期三,五,日",
-黃竹坑,"星期三,五,日",
-淺水灣,"星期三,五,日",
-黃泥涌,"星期三,五,日",
-寶馬山,"星期三,五,日",
-跑馬地,"星期三,五,日",
-薄扶林,"星期三,五,日",
-山頂,"星期三,五,日",盧吉道不設送貨
-舂坎角,"星期三,五,日",
-天后,"星期三,五,日",
-中環,"星期三,五,日",
-香港仔,"星期三,五,日",
-上環,"星期三,五,日",
-大潭,"星期三,五,日",
-港外線碼頭,"星期五,日",只限中午12時至下午3時
-油塘,"星期二,四,五,六,日",
-彩虹,"星期二,四,五,六,日",
-牛頭角,"星期二,四,五,六,日",
-黃大仙,"星期二,四,五,六,日",
-藍田,"星期二,四,五,六,日",
-土瓜灣,"星期二,四,五,六,日",
-大角咀,"星期二,四,五,六,日",
-尖沙咀,"星期二,四,五,六,日",
-美孚,"星期二,四,五,六,日",
-調景嶺,"星期二,四,五,六,日",
-坪石,"星期二,四,五,六,日",
-觀塘,"星期二,四,五,六,日",
-橫頭磡,"星期二,四,五,六,日",
-慈雲山,"星期二,四,五,六,日",
-深水埗,"星期二,四,五,六,日",
-何文田,"星期二,四,五,六,日",
-長沙灣,"星期二,四,五,六,日",
-新蒲崗,"星期二,四,五,六,日",
-油麻地,"星期二,四,五,六,日",
-順利,"星期二,四,五,六,日",
-九龍灣,"星期二,四,五,六,日",
-樂富,"星期二,四,五,六,日",
-竹園,"星期二,四,五,六,日",
-九龍城,"星期二,四,五,六,日",
-紅磡,"星期二,四,五,六,日",
-旺角,"星期二,四,五,六,日",
-鑽石山,"星期二,四,五,六,日",
-荔枝角,"星期二,四,五,六,日","九華徑新舊村,長坑邨不設送貨"
-元朗,"星期二,四,六,日","花蓮地2A,2B,2C,2D,3,3A,3B,5,7,菜園邨不設送貨"
-天水圍,"星期二,四,六,日",
-錦上路,"星期二,四,六,日",
-屯門,"星期二,四,六,日",
-錦繡,"星期二,四,六,日",
-深井,"星期二,四,六,日","深井東邨,深井深康路光屋,深井村1-39號,汀九村不設送貨"
-石崗,"星期二,四,六,日",
-青龍頭,"星期二,四,六,日",
-荃灣,"星期二,四,五,六,日","海霸村,海霸新村,芙蓉山新村,咸田村不設送貨"
-青衣,"星期二,四,五,六,日",
-葵涌,"星期二,四,五,六,日",葵涌貨櫃碼頭不設送貨
-沙田,"星期三,五,日","上禾輋邨,下禾輋邨,黃泥頭村,大藍寮村,大輋,沙田石古壟村不設送貨"
-樟木頭,"星期三,五,日",
-大埔墟,"星期三,五,日",
-大埔墟,"星期三,五,日",
-大圍,"星期三,五,日","大圍新村20-100號,沙田圍舊村不設送貨"
-西澳,"星期三,五,日",
-大埔滘,"星期三,五,日",
-火炭,"星期三,五,日","村屋,火炭邨不設送貨"
-井頭仔,"星期三,五,日",
-上水,"星期三,五,日",
-禾輋邨,"星期三,五,日",
-西徑,"星期三,五,日",
-粉嶺,"星期三,五,日",
-馬鞍山,"星期三,五,日",
-大學,"星期三,五,日",
-聯和墟,"星期三,五,日",
-烏溪沙,"星期三,五,日",
-科學園,"星期三,五,日",
-沙頭角,"星期三,五,日","禁區不設送貨"
-西沙公路,"星期三,五,日",
-大埔,"星期三,五,日","石古壟,錦山村不設送貨"
-東涌,"星期三,六",
-馬灣,"星期三,六",
-珀麗灣,"星期三,六",
-愉景灣,"星期三,六",
-赤柱,"星期一,五",
-石澳,"星期一,五",
-大浪灣,"星期一,五",
-西貢,"星期一,五","蠔涌,鹿尾村,井欄樹,北潭涌不設送貨"
-大網仔,"星期一,五",
-將軍澳,"星期一,三,五,日",
-坑口,"星期一,三,五,日",
-鯉魚門,不設送貨,"三家村,馬環村,馬背村不設送貨"
-長洲,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-南丫島,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-坪洲,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-蒲台島,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-果洲,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-索罟群島,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-古澳洲,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-塔門洲,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-龍彭洲,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-香港國際機場,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-梅窩,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-貝澳,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-塘福,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-大澳,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-石壁,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500 
-昂坪,可提供港內或西環貨物起卸區特別交收,特別交收預約需另收取$500`;
+    const proxy = "https://corsproxy.io/?";
 
-    // 方案 B: CS 資料
-    const rawDataCS = `地區關鍵字,送貨安排,時段
-九龍灣,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-黃大仙,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-牛頭角,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-秀茂坪,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-樂富,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-慈雲山,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-觀塘,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-九龍塘,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-鑽石山,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-牛池灣,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-彩虹,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-新蒲崗,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-九龍城,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-鯉魚門,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-石硤尾,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-藍田,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-油塘,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-土瓜灣,翌日可送,"(A)10:00~14:00,(B)14:00~18:00,(C)18:00~22:00"
-紅磡,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-紅磡,"星期二,六",(C)18:00~22:00
-深水埗,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-深水埗,"星期二,六",(C)18:00~22:00
-旺角,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-旺角,"星期二,六",(C)18:00~22:00
-尖沙咀,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-尖沙咀,"星期二,六",(C)18:00~22:00
-佐敦,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-佐敦,"星期二,六",(C)18:00~22:00
-油麻地,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-油麻地,"星期二,六",(C)18:00~22:00
-何文田,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-何文田,"星期二,六",(C)18:00~22:00
-美孚,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-美孚,"星期二,六",(C)18:00~22:00
-荔枝角,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-荔枝角,"星期二,六",(C)18:00~22:00
-大角咀,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-大角咀,"星期二,六",(C)18:00~22:00
-長沙灣,"星期三,日","(A)10:00~14:00,(B)14:00~18:00"
-長沙灣,"星期二,六",(C)18:00~22:00
-將軍澳,"星期二,四,六","(A)10:00~14:00,(B)14:00~18:00"
-將軍澳,"星期一,三,五,日",(C)18:00~22:00
-葵涌,星期三,(C)18:00~22:00
-葵涌,星期六,"(A)10:00~14:00,(B)14:00~18:00"
-葵芳,星期三,(C)18:00~22:00
-葵芳,星期六,"(A)10:00~14:00,(B)14:00~18:00"
-葵興,星期三,(C)18:00~22:00
-葵興,星期六,"(A)10:00~14:00,(B)14:00~18:00"
-荔景,星期三,(C)18:00~22:00
-荔景,星期六,"(A)10:00~14:00,(B)14:00~18:00"
-青衣,星期三,(C)18:00~22:00
-青衣,星期六,"(A)10:00~14:00,(B)14:00~18:00"
-荃灣,星期三,(C)18:00~22:00
-荃灣,星期六,"(A)10:00~14:00,(B)14:00~18:00"
-大窩口,星期三,(C)18:00~22:00
-大窩口,星期六,"(A)10:00~14:00,(B)14:00~18:00"
-沙田,星期一,"(A)10:00~14:00,(B)14:00~18:00"
-沙田,星期五,(C)18:00~22:00
-大圍,星期一,"(A)10:00~14:00,(B)14:00~18:00"
-大圍,星期五,(C)18:00~22:00
-馬鞍山,星期一,"(A)10:00~14:00,(B)14:00~18:00"
-馬鞍山,星期五,(C)18:00~22:00
-中文大學,星期一,"(A)10:00~14:00,(B)14:00~18:00"
-中文大學,星期五,(C)18:00~22:00
-火炭,星期一,"(A)10:00~14:00,(B)14:00~18:00"
-火炭,星期五,(C)18:00~22:00
-西貢(西沙路),星期一,"(A)10:00~14:00,(B)14:00~18:00"
-西貢(西沙路),星期五,(C)18:00~22:00
-屯門,星期三,"(A)10:00~14:00,(B)14:00~18:00"
-屯門,星期六,(C)18:00~22:00
-元朗,星期三,"(A)10:00~14:00,(B)14:00~18:00"
-元朗,星期六,(C)18:00~22:00
-天水圍,星期三,"(A)10:00~14:00,(B)14:00~18:00"
-天水圍,星期六,(C)18:00~22:00
-深井,星期三,"(A)10:00~14:00,(B)14:00~18:00"
-深井,星期六,(C)18:00~22:00
-上水,星期一,(C)18:00~22:00
-上水,星期五,"(A)10:00~14:00,(B)14:00~18:00"
-大埔,星期一,(C)18:00~22:00
-大埔,星期五,"(A)10:00~14:00,(B)14:00~18:00"
-粉嶺,星期一,(C)18:00~22:00
-粉嶺,星期五,"(A)10:00~14:00,(B)14:00~18:00"
-西貢(市中心),"星期二,五","(A)10:00~14:00,(B)14:00~18:00"
-銅鑼灣,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-銅鑼灣,星期日,(C)18:00~22:00
-天后,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-天后,星期日,(C)18:00~22:00
-跑馬地,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-跑馬地,星期日,(C)18:00~22:00
-灣仔,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-灣仔,星期日,(C)18:00~22:00
-金鐘,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-金鐘,星期日,(C)18:00~22:00
-中環,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-中環,星期日,(C)18:00~22:00
-上環,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-上環,星期日,(C)18:00~22:00
-西環,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-西環,星期日,(C)18:00~22:00
-堅尼地城,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-堅尼地城,星期日,(C)18:00~22:00
-香港仔,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-香港仔,星期日,(C)18:00~22:00
-薄扶林,星期四,"(A)10:00~14:00,(B)14:00~18:00"
-薄扶林,星期日,(C)18:00~22:00
-北角,星期四,(C)18:00~22:00
-北角,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-鰂魚涌,星期四,(C)18:00~22:00
-鰂魚涌,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-杏花邨,星期四,(C)18:00~22:00
-杏花邨,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-炮台山,星期四,(C)18:00~22:00
-炮台山,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-太古,星期四,(C)18:00~22:00
-太古,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-西灣河,星期四,(C)18:00~22:00
-西灣河,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-筲箕灣,星期四,(C)18:00~22:00
-筲箕灣,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-柴灣,星期四,(C)18:00~22:00
-柴灣,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-小西灣,星期四,(C)18:00~22:00
-小西灣,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-赤柱,星期四,(C)18:00~22:00
-赤柱,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-石澳,星期四,(C)18:00~22:00
-石澳,星期日,"(A)10:00~14:00,(B)14:00~18:00"
-東涌,"星期三,六","四天前安排手寫送貨單,送貨前一天會致電客人"
-馬灣,"星期三,六","四天前安排手寫送貨單,送貨前一天會致電客人"`;
+    const rawDC = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=0&single=true&output=csv";
+    const rawCS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=907154772&single=true&output=csv";
+    const rawSetting = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=1663839235&single=true&output=csv";
 
-    // =========================================================
+    const urlDC = proxy + encodeURIComponent(rawDC);
+    const urlCS = proxy + encodeURIComponent(rawCS);
+    const urlSetting = proxy + encodeURIComponent(rawSetting);
 
-    let currentTab = 'dc'; // 默認顯示 DC
-    let dataSets = {
-        'dc': [],
-        'cs': []
+    // 法定假期 (香港銀行假)
+    const holidays2026 = { "1-1": "元旦", "2-17": "年初一", "2-18": "年初二", "2-19": "年初三", "4-3": "耶穌受難", "4-4": "受難翌日", "4-6": "復活節", "5-1": "勞動節", "5-24": "佛誕", "6-19": "端午節", "7-1": "回歸", "10-1": "國慶", "10-20": "重陽節", "12-25": "聖誕", "12-26": "拆禮物日" };
+    const holidays2027 = { "1-1": "元旦", "2-6": "年初一", "2-7": "年初二", "2-8": "年初三", "3-26": "耶穌受難", "3-27": "受難翌日", "3-29": "復活節", "5-1": "勞動節", "5-14": "佛誕", "6-9": "端午節", "7-1": "回歸", "10-1": "國慶", "10-8": "重陽節", "12-25": "聖誕", "12-27": "拆禮物補假" };
+
+    let currentTab = 'dc';
+    let dataSets = { 'dc': [], 'cs': [], 'setting': [] };
+    let loadedCount = 0;
+    
+    let today = new Date();
+    let calYear = today.getFullYear() < 2026 ? 2026 : today.getFullYear();
+    let calMonth = today.getMonth();
+    let activeDeliveryDays = [];
+
+    window.onload = function() {
+        document.getElementById('loading').style.display = 'block';
+        
+        function checkDone() {
+            loadedCount++;
+            if (loadedCount === 3) {
+                document.getElementById('loading').style.display = 'none';
+                console.log("資料載入完成");
+                renderSettings();
+            }
+        }
+        function handleError(name, err) {
+            console.error(name, err);
+            let errBox = document.getElementById('errorMsg');
+            errBox.style.display = 'block';
+            errBox.innerHTML += `⚠️ <b>${name}</b> 資料讀取失敗。請確認你的網絡能存取 Google Sheet，或稍後再試。<br>`;
+            checkDone();
+        }
+
+        // 使用 PapaParse 讀取
+        Papa.parse(urlDC, { download: true, header: true, skipEmptyLines: true, complete: res => { dataSets['dc'] = res.data; checkDone(); }, error: err => handleError("DC (乾貨表)", err) });
+        Papa.parse(urlCS, { download: true, header: true, skipEmptyLines: true, complete: res => { dataSets['cs'] = res.data; checkDone(); }, error: err => handleError("CS (特別車表)", err) });
+        Papa.parse(urlSetting, { download: true, header: true, skipEmptyLines: true, complete: res => { dataSets['setting'] = res.data; checkDone(); }, error: err => handleError("設定頁", err) });
     };
 
-    // 載入資料
-    function initData() {
-        Papa.parse(rawDataDC, {
-            header: true,
-            skipEmptyLines: true,
-            complete: function(res) { dataSets['dc'] = res.data; }
-        });
-        Papa.parse(rawDataCS, {
-            header: true,
-            skipEmptyLines: true,
-            complete: function(res) { dataSets['cs'] = res.data; }
-        });
+    function renderSettings() {
+        let dcHtml = "<ul>", csHtml = "<ul>";
+        let hasDC = false, hasCS = false;
+        
+        if (dataSets['setting']) {
+            dataSets['setting'].forEach(row => {
+                let type = row['方案'] ? row['方案'].trim().toUpperCase() : '';
+                let content = row['內容'] || '';
+                if (content) {
+                    if (type === 'DC') { dcHtml += `<li>${content}</li>`; hasDC = true; }
+                    if (type === 'CS') { csHtml += `<li>${content}</li>`; hasCS = true; }
+                }
+            });
+        }
+        dcHtml += "</ul>"; csHtml += "</ul>";
+        if(!hasDC) dcHtml = "<ul><li>暫無特別通告 (請檢查 Google Sheet Setting 頁)</li></ul>";
+        if(!hasCS) csHtml = "<ul><li>暫無特別通告 (請檢查 Google Sheet Setting 頁)</li></ul>";
+        document.getElementById('content-dc').innerHTML = dcHtml;
+        document.getElementById('content-cs').innerHTML = csHtml;
     }
-    initData();
 
     function switchTab(tab) {
         currentTab = tab;
-        
-        // 切換按鈕樣式
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-            btn.classList.remove('active-dc', 'active-cs');
-        });
-        
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active-dc', 'active-cs'));
         let activeBtn = document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`);
-        if(tab === 'dc') activeBtn.classList.add('active-dc');
-        else activeBtn.classList.add('active-cs');
-
-        // 切換備註顯示
+        if(activeBtn) activeBtn.classList.add(tab === 'dc' ? 'active-dc' : 'active-cs');
         document.getElementById('notice-dc').style.display = (tab === 'dc') ? 'block' : 'none';
         document.getElementById('notice-cs').style.display = (tab === 'cs') ? 'block' : 'none';
-        
-        // 重新執行搜尋
         performSearch();
     }
 
     function performSearch() {
         let input = document.getElementById('searchInput').value.trim();
         let resultContainer = document.getElementById('results');
+        let calArea = document.getElementById('calendarArea');
         resultContainer.innerHTML = '';
-        
+        activeDeliveryDays = []; 
+
         if (input.length < 1) {
             resultContainer.innerHTML = '<div class="empty-msg">請輸入地區關鍵字查詢</div>';
+            calArea.style.display = 'none';
             return;
         }
 
         let found = false;
-        let data = dataSets[currentTab]; // 根據當前 Tab 取資料
+        let data = dataSets[currentTab]; 
+        if (!data) return;
 
         data.forEach(row => {
             let region = row['地區關鍵字'];
-            let schedule = row['送貨安排'];
-            let note = row['⚠️特別備注'] || ''; 
-            let timeSlot = row['時段'] || ''; // CS 表才有
+            let schedule = row['送貨安排'] || '';
+            let note = row['⚠️特別備注'] || row['特別備注'] || '';
+            let timeSlot = row['時段'] || '';
 
-            // CS 表自動修正邏輯
-            if (currentTab === 'cs' && !note && timeSlot.length > 30 && !timeSlot.includes("A)")) {
-                 note = timeSlot;
-                 timeSlot = "";
-            }
+            if (currentTab === 'cs' && !note && timeSlot.length > 30 && !timeSlot.includes("A)")) { note = timeSlot; timeSlot = ""; }
 
             if (region && region.includes(input)) {
                 found = true;
-                
-                // 判斷樣式
+                parseScheduleToDays(schedule);
                 let cardClass = "result-card";
-                if (currentTab === 'dc') cardClass += " type-dc";
-                else cardClass += " type-cs";
-                
-                if (schedule && schedule.includes("不設送貨")) cardClass += " no-service-card";
-
-                // 構建 HTML
+                cardClass += (currentTab === 'dc') ? " type-dc" : " type-cs";
+                if (schedule && (schedule.includes("不設送貨") || schedule.includes("不送"))) cardClass += " no-service-card";
                 let noteHtml = note ? `<div class="alert-box">⚠️ ${note}</div>` : '';
-                
-                let timeHtml = '';
-                if (timeSlot) {
-                    timeHtml = `<div class="info-row">
-                                    <div class="icon">⏰</div>
-                                    <div class="time-slot">${timeSlot}</div>
-                                </div>`;
-                }
+                let timeHtml = timeSlot ? `<div class="info-row"><div class="icon">⏰</div><div class="time-slot">${timeSlot}</div></div>` : '';
 
-                let html = `
-                    <div class="${cardClass}">
-                        <div class="area-header">
-                            <div class="area-name">${region}</div>
-                            <div class="card-tag">${currentTab.toUpperCase()} 方案</div>
-                        </div>
-                        
-                        <div class="info-row">
-                            <div class="icon">📅</div>
-                            <div>${schedule}</div>
-                        </div>
-                        ${timeHtml}
-                        ${noteHtml}
-                    </div>
-                `;
+                let html = `<div class="${cardClass}">
+                        <div class="area-header"><div class="area-name">${region}</div><div class="card-tag">${currentTab === 'dc' ? 'DC' : 'CS'} 方案</div></div>
+                        <div class="info-row"><div class="icon">📅</div><div>${schedule}</div></div>
+                        ${timeHtml} ${noteHtml}
+                    </div>`;
                 resultContainer.innerHTML += html;
             }
         });
 
         if (!found) {
-            resultContainer.innerHTML = `<div class="empty-msg">係 <b>${currentTab.toUpperCase()} 方案</b> 中搵唔到「${input}」嘅資料。<br>試下切換上面按鈕睇下另一個方案 或者 以鄰近地區搜尋？</div>`;
+            resultContainer.innerHTML = `<div class="empty-msg">搵唔到「${input}」嘅資料。<br>試下切換上方按鈕？</div>`;
+            calArea.style.display = 'none';
+        } else {
+            calArea.style.display = 'block';
+            renderCalendar(); 
+        }
+    }
+
+    function parseScheduleToDays(text) {
+        if (!text) return;
+        if (text.includes("不設") || text.includes("不送")) return;
+        let days = new Set(activeDeliveryDays);
+        if (text.includes("翌日") || text.includes("每日") || text.includes("一至日")) { [0,1,2,3,4,5,6].forEach(d => days.add(d)); }
+        else if (text.includes("一至六")) { [1,2,3,4,5,6].forEach(d => days.add(d)); }
+        else {
+            if (text.includes("一")) days.add(1); if (text.includes("二")) days.add(2); if (text.includes("三")) days.add(3);
+            if (text.includes("四")) days.add(4); if (text.includes("五")) days.add(5); if (text.includes("六")) days.add(6);
+            if (text.includes("日")) days.add(0);
+        }
+        activeDeliveryDays = Array.from(days);
+    }
+
+    function changeMonth(delta) {
+        calMonth += delta;
+        if (calMonth > 11) { calMonth = 0; calYear++; } else if (calMonth < 0) { calMonth = 11; calYear--; }
+        renderCalendar();
+    }
+
+    function renderCalendar() {
+        const grid = document.getElementById('calGrid');
+        const title = document.getElementById('calTitle');
+        while (grid.children.length > 7) { grid.removeChild(grid.lastChild); }
+        title.innerText = `${calYear}年 ${calMonth + 1}月`;
+        let firstDayObj = new Date(calYear, calMonth, 1);
+        let firstDay = firstDayObj.getDay(); 
+        let startOffset = (firstDay === 0) ? 6 : firstDay - 1;
+        let daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+        for (let i = 0; i < startOffset; i++) { let cell = document.createElement('div'); cell.className = 'cal-cell empty'; grid.appendChild(cell); }
+        let holidays = (calYear === 2026) ? holidays2026 : (calYear === 2027 ? holidays2027 : {});
+        for (let d = 1; d <= daysInMonth; d++) {
+            let cell = document.createElement('div'); cell.className = 'cal-cell';
+            let currentDayOfWeek = new Date(calYear, calMonth, d).getDay();
+            if (activeDeliveryDays.includes(currentDayOfWeek)) { cell.classList.add('highlight'); }
+            let dateKey = `${calMonth + 1}-${d}`;
+            let holidayName = holidays[dateKey];
+            let dateSpan = document.createElement('div'); dateSpan.className = 'cal-date'; dateSpan.innerText = d; cell.appendChild(dateSpan);
+            if (holidayName) { cell.classList.add('is-holiday'); let holidaySpan = document.createElement('div'); holidaySpan.className = 'cal-holiday'; holidaySpan.innerText = holidayName; cell.appendChild(holidaySpan); }
+            grid.appendChild(cell);
         }
     }
 </script>
