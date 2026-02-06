@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>送貨查詢系統 (強力連線版)</title>
+    <title>送貨查詢系統 (診斷修復版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f6f9; padding: 20px; display: flex; justify-content: center; }
@@ -31,8 +31,11 @@
         
         .results-area { padding: 20px; min-height: 120px; background: #f9f9f9; }
         .empty-msg { text-align: center; color: #888; margin-top: 20px; font-size: 15px; }
-        .loading-msg { text-align: center; color: #666; margin-top: 20px; font-weight: bold; }
-        .error-msg { text-align: center; color: #721c24; margin-top: 20px; display: none; padding: 15px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; font-size: 14px; line-height: 1.6; }
+        
+        /* 診斷面板樣式 */
+        .status-panel { padding: 15px; background: #fff3cd; border-bottom: 1px solid #ffeeba; text-align: center; font-size: 14px; color: #856404; display: none; }
+        .status-log { text-align: left; background: #333; color: #0f0; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; margin-top: 10px; height: 100px; overflow-y: scroll; display: none; }
+        .retry-btn { background: #856404; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; margin-top: 5px; }
         
         .result-card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; overflow: hidden; border-left: 5px solid #ccc; }
         .result-card.type-dc { border-left-color: #007bff; }
@@ -77,6 +80,15 @@
         </div>
     </div>
 
+    <div id="statusPanel" class="status-panel">
+        <span id="statusText">正在嘗試連線至 Google Sheet...</span>
+        <div id="debugLog" class="status-log"></div>
+        <div id="manualTest" style="display:none; margin-top:10px;">
+            如果一直失敗，請點擊測試你的 Link 是否有效：<br>
+            <a href="#" id="testLink" target="_blank" style="color:#007bff;">[點擊這裡測試直接下載 CSV]</a>
+        </div>
+    </div>
+
     <div class="notice-section">
         <div id="notice-dc" class="notice-box notice-dc" style="display: block;">
             <span class="notice-title">📦 DC 上樓收費及須知：</span>
@@ -93,9 +105,6 @@
             <input type="text" id="searchInput" placeholder="請輸入送貨地區..." onkeyup="performSearch()">
         </div>
     </div>
-
-    <div id="loading" class="loading-msg">正在強力連線中 (請稍候)...</div>
-    <div id="errorMsg" class="error-msg"></div>
     
     <div id="results" class="results-area">
         <div class="empty-msg">請輸入地區關鍵字查詢</div>
@@ -121,10 +130,10 @@
 
 <script>
     // =========================================================
-    // ▼ 使用 corsproxy.io (更強大的代理) ▼
+    // ▼ 使用 CodeTabs Proxy (兼容性最強) ▼
     // =========================================================
     
-    const proxy = "https://corsproxy.io/?";
+    const proxy = "https://api.codetabs.com/v1/proxy?quest=";
 
     const rawDC = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=0&single=true&output=csv";
     const rawCS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=907154772&single=true&output=csv";
@@ -134,7 +143,8 @@
     const urlCS = proxy + encodeURIComponent(rawCS);
     const urlSetting = proxy + encodeURIComponent(rawSetting);
 
-    // 法定假期 (香港銀行假)
+    // =========================================================
+
     const holidays2026 = { "1-1": "元旦", "2-17": "年初一", "2-18": "年初二", "2-19": "年初三", "4-3": "耶穌受難", "4-4": "受難翌日", "4-6": "復活節", "5-1": "勞動節", "5-24": "佛誕", "6-19": "端午節", "7-1": "回歸", "10-1": "國慶", "10-20": "重陽節", "12-25": "聖誕", "12-26": "拆禮物日" };
     const holidays2027 = { "1-1": "元旦", "2-6": "年初一", "2-7": "年初二", "2-8": "年初三", "3-26": "耶穌受難", "3-27": "受難翌日", "3-29": "復活節", "5-1": "勞動節", "5-14": "佛誕", "6-9": "端午節", "7-1": "回歸", "10-1": "國慶", "10-8": "重陽節", "12-25": "聖誕", "12-27": "拆禮物補假" };
 
@@ -147,29 +157,74 @@
     let calMonth = today.getMonth();
     let activeDeliveryDays = [];
 
+    // 日誌功能
+    function log(msg, isError = false) {
+        let logBox = document.getElementById('debugLog');
+        let color = isError ? '#ff6b6b' : '#0f0';
+        logBox.innerHTML += `<div style="color:${color};">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+    }
+
     window.onload = function() {
-        document.getElementById('loading').style.display = 'block';
+        let statusPanel = document.getElementById('statusPanel');
+        statusPanel.style.display = 'block';
+        let statusText = document.getElementById('statusText');
         
+        // 設定測試連結 (給用戶手動點擊)
+        document.getElementById('testLink').href = rawDC;
+
         function checkDone() {
             loadedCount++;
             if (loadedCount === 3) {
-                document.getElementById('loading').style.display = 'none';
-                console.log("資料載入完成");
+                statusText.innerText = "✅ 資料載入完成！(此黃色框稍後會消失)";
+                log("All datasets loaded.");
+                setTimeout(() => { statusPanel.style.display = 'none'; }, 3000); // 3秒後隱藏
                 renderSettings();
             }
         }
+
         function handleError(name, err) {
-            console.error(name, err);
-            let errBox = document.getElementById('errorMsg');
-            errBox.style.display = 'block';
-            errBox.innerHTML += `⚠️ <b>${name}</b> 資料讀取失敗。請確認你的網絡能存取 Google Sheet，或稍後再試。<br>`;
+            statusText.innerHTML = `⚠️ <b>${name}</b> 連線失敗。<br>請查看下方詳細記錄。`;
+            document.getElementById('debugLog').style.display = 'block';
+            document.getElementById('manualTest').style.display = 'block';
+            log(`ERROR loading ${name}: ${JSON.stringify(err)}`, true);
+            
+            // 即使失敗，也當作完成一次嘗試，避免卡死
             checkDone();
         }
 
-        // 使用 PapaParse 讀取
-        Papa.parse(urlDC, { download: true, header: true, skipEmptyLines: true, complete: res => { dataSets['dc'] = res.data; checkDone(); }, error: err => handleError("DC (乾貨表)", err) });
-        Papa.parse(urlCS, { download: true, header: true, skipEmptyLines: true, complete: res => { dataSets['cs'] = res.data; checkDone(); }, error: err => handleError("CS (特別車表)", err) });
-        Papa.parse(urlSetting, { download: true, header: true, skipEmptyLines: true, complete: res => { dataSets['setting'] = res.data; checkDone(); }, error: err => handleError("設定頁", err) });
+        log("Starting connection via CodeTabs Proxy...");
+
+        Papa.parse(urlDC, { 
+            download: true, header: true, skipEmptyLines: true, 
+            complete: res => { 
+                if(res.data.length === 0) { handleError("DC (空資料)", "Empty Response"); return; }
+                dataSets['dc'] = res.data; 
+                log("DC Data loaded: " + res.data.length + " rows"); 
+                checkDone(); 
+            }, 
+            error: err => handleError("DC", err) 
+        });
+
+        Papa.parse(urlCS, { 
+            download: true, header: true, skipEmptyLines: true, 
+            complete: res => { 
+                dataSets['cs'] = res.data; 
+                log("CS Data loaded: " + res.data.length + " rows"); 
+                checkDone(); 
+            }, 
+            error: err => handleError("CS", err) 
+        });
+
+        Papa.parse(urlSetting, { 
+            download: true, header: true, skipEmptyLines: true, 
+            complete: res => { 
+                dataSets['setting'] = res.data; 
+                log("Setting Data loaded: " + res.data.length + " rows"); 
+                checkDone(); 
+            }, 
+            error: err => handleError("Setting", err) 
+        });
     };
 
     function renderSettings() {
@@ -187,8 +242,8 @@
             });
         }
         dcHtml += "</ul>"; csHtml += "</ul>";
-        if(!hasDC) dcHtml = "<ul><li>暫無特別通告 (請檢查 Google Sheet Setting 頁)</li></ul>";
-        if(!hasCS) csHtml = "<ul><li>暫無特別通告 (請檢查 Google Sheet Setting 頁)</li></ul>";
+        if(!hasDC) dcHtml = "<ul><li>(無資料)</li></ul>";
+        if(!hasCS) csHtml = "<ul><li>(無資料)</li></ul>";
         document.getElementById('content-dc').innerHTML = dcHtml;
         document.getElementById('content-cs').innerHTML = csHtml;
     }
