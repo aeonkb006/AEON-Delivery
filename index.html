@@ -5,17 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="apple-touch-icon" href="icon.png"> 
     <link rel="icon" type="image/png" href="icon.png">
-    <title>送貨查詢系統 (秒開版)</title>
+    <title>送貨查詢系統 (最終防截版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f6f9; padding: 20px; display: flex; justify-content: center; }
         .container { background: white; padding: 0; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 100%; max-width: 600px; overflow: hidden; }
         
-        /* Header 加入相對定位，方便放左上角按鈕 */
         .header { background: #333; color: white; padding: 20px; text-align: center; position: relative; }
         h2 { margin: 0 0 15px 0; font-size: 22px; }
         
-        /* 🔄 更新按鈕樣式 */
         .update-btn {
             position: absolute;
             top: 20px;
@@ -54,7 +52,6 @@
         .results-area { padding: 20px; min-height: 120px; background: #f9f9f9; }
         .empty-msg { text-align: center; color: #888; margin-top: 20px; font-size: 15px; }
         
-        /* 診斷面板 */
         .status-panel { padding: 15px; background: #d4edda; border-bottom: 1px solid #c3e6cb; text-align: center; font-size: 14px; color: #155724; display: none; }
         .status-log { text-align: left; background: #333; color: #0f0; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; margin-top: 10px; height: 100px; overflow-y: scroll; display: none; }
         
@@ -87,9 +84,7 @@
         .cal-cell.highlight::before { content: ""; position: absolute; top: 2px; left: 50%; transform: translateX(-50%); width: 26px; height: 26px; background-color: #d4edda; border-radius: 50%; z-index: 1; }
         .cal-cell.highlight .cal-date { color: #155724; }
         .cal-cell.is-holiday .cal-date { color: #e74c3c !important; }
-        /* 週末顏色 (Sun & Sat) */
         .cal-cell:nth-child(7n), .cal-cell:nth-child(7n+1) { color: #999; }
-        /* Sun (第1欄) 特別改紅色 */
         .cal-day-header:nth-child(1) { color: #e74c3c; }
     </style>
 </head>
@@ -159,24 +154,19 @@
     const rawCS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=907154772&single=true&output=csv";
     const rawSetting = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=1663839235&single=true&output=csv";
 
-    const urlDC = proxy + encodeURIComponent(rawDC);
-    const urlCS = proxy + encodeURIComponent(rawCS);
-    const urlSetting = proxy + encodeURIComponent(rawSetting);
-
     const holidays2026 = { "1-1": "元旦", "2-17": "年初一", "2-18": "年初二", "2-19": "年初三", "4-3": "耶穌受難", "4-4": "受難翌日", "4-6": "復活節", "5-1": "勞動節", "5-24": "佛誕", "6-19": "端午節", "7-1": "回歸", "10-1": "國慶", "10-20": "重陽節", "12-25": "聖誕", "12-26": "拆禮物日" };
     const holidays2027 = { "1-1": "元旦", "2-6": "年初一", "2-7": "年初二", "2-8": "年初三", "3-26": "耶穌受難", "3-27": "受難翌日", "3-29": "復活節", "5-1": "勞動節", "5-14": "佛誕", "6-9": "端午節", "7-1": "回歸", "10-1": "國慶", "10-8": "重陽節", "12-25": "聖誕", "12-27": "拆禮物補假" };
 
     let currentTab = 'dc';
     let dataSets = { 'dc': [], 'cs': [], 'setting': [] };
     let loadedCount = 0;
-    let hasError = false; // 記錄下載過程有無發生錯誤
+    let hasError = false; 
     
     let today = new Date();
     let calYear = today.getFullYear() < 2026 ? 2026 : today.getFullYear();
     let calMonth = today.getMonth();
     let activeDeliveryDays = [];
 
-    // Local Storage 的名稱
     const STORAGE_KEY = 'delivery_data_cache';
 
     function log(msg, isError = false) {
@@ -186,7 +176,6 @@
         logBox.scrollTop = logBox.scrollHeight;
     }
 
-    // 網頁開啟時的邏輯：先檢查記憶體，無先去下載
     window.onload = function() {
         document.getElementById('testLink').href = rawDC;
         let cachedData = localStorage.getItem(STORAGE_KEY);
@@ -197,16 +186,13 @@
                 renderSettings();
                 console.log("從本機記憶體成功秒速載入資料！");
             } catch (e) {
-                // 如果舊資料壞了，重新下載
                 fetchDataFromWeb();
             }
         } else {
-            // 第一次開，強制下載
             fetchDataFromWeb();
         }
     };
 
-    // 手動撳「更新」按鈕執行的函數
     function forceUpdate() {
         let btn = document.querySelector('.update-btn');
         btn.innerText = "⏳ 下載中...";
@@ -214,18 +200,23 @@
         fetchDataFromWeb();
     }
 
-    // 負責去 Google Sheet 下載資料的核心功能
     function fetchDataFromWeb() {
         let statusPanel = document.getElementById('statusPanel');
         let statusText = document.getElementById('statusText');
         
         statusPanel.style.display = 'block';
-        statusPanel.style.backgroundColor = '#fff3cd'; // 黃色 Loading 狀態
+        statusPanel.style.backgroundColor = '#fff3cd'; 
         statusPanel.style.color = '#856404';
         statusText.innerText = "正在從 Google Sheet 更新最新資料...";
         
         loadedCount = 0;
         hasError = false;
+        
+        // 🌟 重點更新：加入時間戳，打破中轉站快取，防止被攔截！
+        let timestamp = new Date().getTime();
+        let freshUrlDC = proxy + encodeURIComponent(rawDC + "&_t=" + timestamp);
+        let freshUrlCS = proxy + encodeURIComponent(rawCS + "&_t=" + timestamp);
+        let freshUrlSetting = proxy + encodeURIComponent(rawSetting + "&_t=" + timestamp);
         
         function checkDone() {
             loadedCount++;
@@ -235,11 +226,10 @@
                 btn.disabled = false;
 
                 if (!hasError) {
-                    statusPanel.style.backgroundColor = '#d4edda'; // 綠色成功狀態
+                    statusPanel.style.backgroundColor = '#d4edda';
                     statusPanel.style.color = '#155724';
                     statusText.innerText = "✅ 資料更新成功！";
                     
-                    // 成功後將新資料寫入電話記憶體
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataSets));
                     
                     setTimeout(() => { statusPanel.style.display = 'none'; }, 2000);
@@ -247,7 +237,6 @@
                 
                 renderSettings();
                 
-                // 如果搜尋框有字，更新完自動重新搜尋一次
                 if (document.getElementById('searchInput').value.trim() !== '') {
                     performSearch();
                 }
@@ -256,16 +245,16 @@
 
         function handleError(name, err) {
             hasError = true;
-            statusPanel.style.backgroundColor = '#f8d7da'; // 紅色錯誤狀態
+            statusPanel.style.backgroundColor = '#f8d7da'; 
             statusPanel.style.color = '#721c24';
             statusText.innerHTML = `⚠️ <b>${name}</b> 更新失敗，將保留舊資料。`;
             document.getElementById('debugLog').style.display = 'block';
             document.getElementById('manualTest').style.display = 'block';
-            log(`ERROR ${name}: ${JSON.stringify(err)}`, true);
+            log(`ERROR ${name}: 系統攔截或網路超時`, true);
             checkDone();
         }
 
-        Papa.parse(urlDC, { 
+        Papa.parse(freshUrlDC, { 
             download: true, header: true, skipEmptyLines: true, 
             complete: res => { 
                 if(res.data.length === 0) { handleError("DC", "Empty"); return; }
@@ -274,15 +263,21 @@
             error: err => handleError("DC", err) 
         });
 
-        Papa.parse(urlCS, { 
+        Papa.parse(freshUrlCS, { 
             download: true, header: true, skipEmptyLines: true, 
-            complete: res => { dataSets['cs'] = res.data; checkDone(); }, 
+            complete: res => { 
+                if(res.data.length === 0) { handleError("CS", "Empty"); return; }
+                dataSets['cs'] = res.data; checkDone(); 
+            }, 
             error: err => handleError("CS", err) 
         });
 
-        Papa.parse(urlSetting, { 
+        Papa.parse(freshUrlSetting, { 
             download: true, header: true, skipEmptyLines: true, 
-            complete: res => { dataSets['setting'] = res.data; checkDone(); }, 
+            complete: res => { 
+                if(res.data.length === 0) { handleError("Setting", "Empty"); return; }
+                dataSets['setting'] = res.data; checkDone(); 
+            }, 
             error: err => handleError("Setting", err) 
         });
     }
@@ -396,7 +391,7 @@
         title.innerText = `${calYear}年 ${calMonth + 1}月`;
         
         let firstDayObj = new Date(calYear, calMonth, 1);
-        let firstDay = firstDayObj.getDay(); // 0(Sun) - 6(Sat)
+        let firstDay = firstDayObj.getDay(); 
         
         let startOffset = firstDay; 
 
