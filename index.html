@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="apple-touch-icon" href="icon.png"> 
     <link rel="icon" type="image/png" href="icon.png">
-    <title>送貨查詢系統 (最終防截版)</title>
+    <title>送貨查詢系統 (直連穩定版)</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
         body { font-family: "Microsoft JhengHei", "Heiti TC", sans-serif; background-color: #f4f6f9; padding: 20px; display: flex; justify-content: center; }
@@ -31,6 +31,7 @@
         }
         .update-btn:hover { background: rgba(255, 255, 255, 0.4); }
         .update-btn:active { transform: scale(0.95); }
+        .update-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         .tabs { display: flex; background: #e0e0e0; padding: 5px; border-radius: 8px; margin-top: 10px; }
         .tab-btn { flex: 1; border: none; padding: 12px; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 6px; transition: 0.3s; background: transparent; color: #555; }
@@ -53,7 +54,7 @@
         .empty-msg { text-align: center; color: #888; margin-top: 20px; font-size: 15px; }
         
         .status-panel { padding: 15px; background: #d4edda; border-bottom: 1px solid #c3e6cb; text-align: center; font-size: 14px; color: #155724; display: none; }
-        .status-log { text-align: left; background: #333; color: #0f0; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; margin-top: 10px; height: 100px; overflow-y: scroll; display: none; }
+        .status-log { text-align: left; background: #333; color: #ffeb3b; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; margin-top: 10px; height: 100px; overflow-y: scroll; display: none; }
         
         .result-card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; overflow: hidden; border-left: 5px solid #ccc; }
         .result-card.type-dc { border-left-color: #007bff; }
@@ -92,7 +93,7 @@
 
 <div class="container">
     <div class="header">
-        <button class="update-btn" onclick="forceUpdate()">🔄 更新</button>
+        <button class="update-btn" onclick="forceUpdate()" id="updateBtn">🔄 更新</button>
         
         <h2>🚚 送貨查詢頁面</h2>
         <div class="tabs">
@@ -102,10 +103,10 @@
     </div>
 
     <div id="statusPanel" class="status-panel">
-        <span id="statusText">正在嘗試連線至 Google Sheet...</span>
+        <span id="statusText">正在連線至 Google Sheet...</span>
         <div id="debugLog" class="status-log"></div>
         <div id="manualTest" style="display:none; margin-top:10px;">
-            <a href="#" id="testLink" target="_blank" style="color:#007bff;">[點擊這裡測試直接下載 CSV]</a>
+            <a href="#" id="testLink" target="_blank" style="color:#007bff; text-decoration: underline;">[點擊這裡測試直接下載 CSV]</a>
         </div>
     </div>
 
@@ -149,7 +150,9 @@
 </div>
 
 <script>
-    const proxy = "https://api.codetabs.com/v1/proxy?quest=";
+    // =========================================================
+    // 移除了所有 Proxy，直接連線至 Google Sheet (原汁原味，最穩定)
+    // =========================================================
     const rawDC = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=0&single=true&output=csv";
     const rawCS = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=907154772&single=true&output=csv";
     const rawSetting = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVUTcCv0PJLr8oTDvXHUP-U1gQ0gutnDgyLBAJAIAilLnRTedyrwLrws6vPQ5iGIM-pu9dpx0voitj/pub?gid=1663839235&single=true&output=csv";
@@ -171,7 +174,7 @@
 
     function log(msg, isError = false) {
         let logBox = document.getElementById('debugLog');
-        let color = isError ? '#ff6b6b' : '#0f0';
+        let color = isError ? '#ff6b6b' : '#ffeb3b';
         logBox.innerHTML += `<div style="color:${color};">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
         logBox.scrollTop = logBox.scrollHeight;
     }
@@ -194,7 +197,7 @@
     };
 
     function forceUpdate() {
-        let btn = document.querySelector('.update-btn');
+        let btn = document.getElementById('updateBtn');
         btn.innerText = "⏳ 下載中...";
         btn.disabled = true;
         fetchDataFromWeb();
@@ -203,36 +206,36 @@
     function fetchDataFromWeb() {
         let statusPanel = document.getElementById('statusPanel');
         let statusText = document.getElementById('statusText');
+        let btn = document.getElementById('updateBtn');
         
         statusPanel.style.display = 'block';
         statusPanel.style.backgroundColor = '#fff3cd'; 
         statusPanel.style.color = '#856404';
-        statusText.innerText = "正在從 Google Sheet 更新最新資料...";
+        statusText.innerText = "🔄 正在從 Google 伺服器下載最新資料...";
         
         loadedCount = 0;
         hasError = false;
         
-        // 🌟 重點更新：加入時間戳，打破中轉站快取，防止被攔截！
+        // 🌟 防快取參數 (加在直接連線的 URL 後面)
         let timestamp = new Date().getTime();
-        let freshUrlDC = proxy + encodeURIComponent(rawDC + "&_t=" + timestamp);
-        let freshUrlCS = proxy + encodeURIComponent(rawCS + "&_t=" + timestamp);
-        let freshUrlSetting = proxy + encodeURIComponent(rawSetting + "&_t=" + timestamp);
+        let freshUrlDC = rawDC + "&_t=" + timestamp;
+        let freshUrlCS = rawCS + "&_t=" + timestamp;
+        let freshUrlSetting = rawSetting + "&_t=" + timestamp;
         
         function checkDone() {
             loadedCount++;
             if (loadedCount === 3) {
-                let btn = document.querySelector('.update-btn');
                 btn.innerText = "🔄 更新";
                 btn.disabled = false;
 
                 if (!hasError) {
                     statusPanel.style.backgroundColor = '#d4edda';
                     statusPanel.style.color = '#155724';
-                    statusText.innerText = "✅ 資料更新成功！";
+                    statusText.innerText = "✅ 最新資料更新成功！(可隨時秒速搜尋)";
                     
                     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataSets));
                     
-                    setTimeout(() => { statusPanel.style.display = 'none'; }, 2000);
+                    setTimeout(() => { statusPanel.style.display = 'none'; }, 2500);
                 }
                 
                 renderSettings();
@@ -243,21 +246,28 @@
             }
         }
 
-        function handleError(name, err) {
+        function handleError(name, errObj) {
             hasError = true;
             statusPanel.style.backgroundColor = '#f8d7da'; 
             statusPanel.style.color = '#721c24';
             statusText.innerHTML = `⚠️ <b>${name}</b> 更新失敗，將保留舊資料。`;
             document.getElementById('debugLog').style.display = 'block';
             document.getElementById('manualTest').style.display = 'block';
-            log(`ERROR ${name}: 系統攔截或網路超時`, true);
+            
+            // 更詳細的錯誤訊息提取
+            let errMsg = "網路錯誤或超時";
+            if (errObj && errObj.message) errMsg = errObj.message;
+            else if (errObj && errObj.type) errMsg = errObj.type;
+            
+            log(`ERROR ${name}: ${errMsg}`, true);
             checkDone();
         }
 
+        // 直接用 PapaParse 讀取 Google Sheet CSV，不再經 Proxy
         Papa.parse(freshUrlDC, { 
             download: true, header: true, skipEmptyLines: true, 
             complete: res => { 
-                if(res.data.length === 0) { handleError("DC", "Empty"); return; }
+                if(res.data.length === 0) { handleError("DC", {message: "檔案是空的"}); return; }
                 dataSets['dc'] = res.data; checkDone(); 
             }, 
             error: err => handleError("DC", err) 
@@ -266,7 +276,7 @@
         Papa.parse(freshUrlCS, { 
             download: true, header: true, skipEmptyLines: true, 
             complete: res => { 
-                if(res.data.length === 0) { handleError("CS", "Empty"); return; }
+                if(res.data.length === 0) { handleError("CS", {message: "檔案是空的"}); return; }
                 dataSets['cs'] = res.data; checkDone(); 
             }, 
             error: err => handleError("CS", err) 
@@ -275,7 +285,7 @@
         Papa.parse(freshUrlSetting, { 
             download: true, header: true, skipEmptyLines: true, 
             complete: res => { 
-                if(res.data.length === 0) { handleError("Setting", "Empty"); return; }
+                if(res.data.length === 0) { handleError("Setting", {message: "檔案是空的"}); return; }
                 dataSets['setting'] = res.data; checkDone(); 
             }, 
             error: err => handleError("Setting", err) 
